@@ -1,7 +1,6 @@
 import { MockItemRequest } from "@/lib/types/mock/request";
 import TableEntry from "./TableEntry";
 import { PAGINATION_PAGE_SIZE } from "@/lib/constants/config";
-import Dropdown from "../atoms/Dropdown";
 
 type TableProps = {
   data?: MockItemRequest[];
