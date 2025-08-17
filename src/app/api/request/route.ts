@@ -21,8 +21,8 @@ export async function PUT(request: Request) {
     const entry = {
       requestorName,
       itemRequested,
-      created: new Date(),
-      updated: new Date(),
+      requestCreatedDate: new Date(),
+      lastEditedDate: new Date(),
       status: "pending",
     };
 
@@ -61,14 +61,22 @@ export async function GET(request: Request) {
 
     const skip = ((page as number) - 1) * PAGINATION_PAGE_SIZE;
 
-    const data = await collection
-      .find(status ? { status } : {})
-      .skip(skip)
-      .limit(PAGINATION_PAGE_SIZE)
-      .sort({ created: -1 })
-      .toArray();
+    const query = status ? { status } : {};
 
-    return new Response(JSON.stringify(data), {
+    const data = (
+      await collection
+        .find(query)
+        .skip(skip)
+        .limit(PAGINATION_PAGE_SIZE)
+        .sort({ requestCreatedDate: -1 })
+        .toArray()
+    ).map(({ _id, ...rest }) => {
+      return { id: _id, ...rest };
+    });
+
+    const totalRecords = await collection.countDocuments(query);
+
+    return new Response(JSON.stringify({ data, totalRecords }), {
       status: HTTP_STATUS_CODE.OK,
     });
   } catch {
@@ -98,7 +106,7 @@ export async function PATCH(request: Request) {
       .collection("requests")
       .updateOne(
         { _id: new ObjectId(id) },
-        { $set: { status, updated: new Date() } }
+        { $set: { status, lastEditedDate: new Date() } }
       );
 
     if (res.matchedCount === 0) throw new Error();

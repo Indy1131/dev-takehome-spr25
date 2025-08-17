@@ -1,48 +1,100 @@
 "use client";
 
-import Button from "@/components/atoms/Button";
-import Input from "@/components/atoms/Input";
-import { useState } from "react";
+import TabButton from "@/components/atoms/TabButton";
+import Pagination from "@/components/molecules/Pagination";
+import Table from "@/components/tables/Table";
+import { PAGINATION_PAGE_SIZE } from "@/lib/constants/config";
+import { MockItemRequest } from "@/lib/types/mock/request";
+import { useEffect, useState } from "react";
 
-/**
- * Legacy front-end code from Crisis Corner's previous admin page!
- */
+const statusTypes = ["Pending", "Approved", "Completed", "Rejected"];
+
+type ItemRequestResponse = {
+  data: MockItemRequest[];
+  totalRecords: number;
+};
+
 export default function ItemRequestsPage() {
-  const [item, setItem] = useState<string>("");
-  const [itemList, setItemList] = useState<string[]>([]);
+  const [page, setPage] = useState(1);
+  const [status, setStatus] = useState<string | null>(null);
+  const [data, setData] = useState<ItemRequestResponse | undefined>(undefined);
+  const [loading, setLoading] = useState(true);
 
-  const handleAddItem = (): void => {
-    if (item.trim()) {
-      setItemList((prevList) => [...prevList, item.trim()]);
-      setItem("");
+  function handleStatusButtonClick(type: string | null) {
+    setPage(1);
+    setStatus(type);
+  }
+
+  function handlePageChangeClick(newPage: number) {
+    setPage(newPage);
+  }
+
+  async function refreshData() {
+    const url = `/api/request/?page=${page}${
+      status ? `&status=${status}` : ""
+    }`;
+
+    const req = await fetch(url, {
+      method: "GET",
+    });
+    const json = await req.json();
+
+    setData(json);
+  }
+
+  useEffect(() => {
+    async function getData() {
+      setLoading(true);
+      const url = `/api/request/?page=${page}${
+        status ? `&status=${status}` : ""
+      }`;
+
+      const req = await fetch(url, {
+        method: "GET",
+      });
+      const json = await req.json();
+
+      setData(json);
+      setLoading(false);
     }
-  };
+    getData();
+  }, [page, status]);
 
   return (
-    <div className="max-w-md mx-auto mt-8 flex flex-col items-center gap-6">
-      <h2 className="font-bold">Approve Items</h2>
-
-      <div className="flex flex-col w-full gap-4">
-        <Input
-          type="text"
-          placeholder="Type an item"
-          value={item}
-          onChange={(e) => setItem(e.target.value)}
-          label="Item"
-        />
-        <Button onClick={handleAddItem}>Approve</Button>
+    <div className="">
+      <div className="w-full p-6">
+        <h1 className="font-medium text-2xl">Item Requests</h1>
       </div>
-      <div className="flex flex-col gap-3">
-        <h3 className="underline">Currently approved items:</h3>
-        {itemList.length > 0 ? (
-          <ul className="list-disc pl-5">
-            {itemList.map((listItem, index) => (
-              <li key={index}>{listItem}</li>
-            ))}
-          </ul>
-        ) : (
-          "None :("
-        )}
+      <div className="flex gap-2 justify-center sm:justify-start sm:px-6">
+        <TabButton
+          active={status === null}
+          onClick={() => handleStatusButtonClick(null)}
+        >
+          All
+        </TabButton>
+        {statusTypes.map((type) => {
+          return (
+            <TabButton
+              key={type}
+              onClick={() => handleStatusButtonClick(type.toLowerCase())}
+              active={type.toLowerCase() == status}
+            >
+              {type}
+            </TabButton>
+          );
+        })}
+      </div>
+      <Table
+        data={!loading && data ? data.data : undefined}
+        refresh={refreshData}
+      />
+      <div className="w-full flex justify-end h-12 items-center px-8">
+        <Pagination
+          pageNumber={page}
+          pageSize={PAGINATION_PAGE_SIZE}
+          totalRecords={data ? data.totalRecords : 0}
+          onPageChange={handlePageChangeClick}
+        />
       </div>
     </div>
   );
